@@ -261,6 +261,53 @@ button.secondary-btn:hover {
 .close-modal:hover {
     color: var(--text);
 }
+/* Lock Screen Overlay Styles */
+.lock-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.lock-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 30px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.lock-box h2 {
+    margin-top: 0;
+    color: var(--primary);
+}
+
+.lock-box p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 20px;
+}
+
+.lock-box form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
 
 @media (max-width: 768px) {
     body {

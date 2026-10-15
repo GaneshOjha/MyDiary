@@ -5,9 +5,124 @@ const CLOUDINARY_CLOUD_NAME = 'skppslpm';
 const PHOTO_UPLOAD_PRESET = 'PhotoUploadPreset';
 // ---------------------
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+        storage: window.sessionStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false
+    }
+});
+
 let uploadedPhotoUrl = '';
 let selectedPdfFile = null;
+let vaultRecords = [];
+
+// Check session on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+        showApp();
+    } else {
+        showLogin();
+    }
+});
+
+// Show/Hide Password Toggle for Login Screen
+window.toggleLoginPassword = function() {
+    const passInput = document.getElementById('auth-password');
+    const btn = event.currentTarget;
+    if (passInput.type === 'password') {
+        passInput.type = 'text';
+        btn.innerText = '🔒';
+    } else {
+        passInput.type = 'password';
+        btn.innerText = '👁️';
+    }
+};
+
+// Handle Login Form Submit
+window.handleLogin = async function(e) {
+    e.preventDefault();
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+    const errorMsg = document.getElementById('auth-error');
+    const submitBtn = document.getElementById('auth-submit-btn');
+
+    setLoading(submitBtn, true, 'Logging in...');
+    errorMsg.style.display = 'none';
+
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+    });
+
+    setLoading(submitBtn, false, 'Login to Vault');
+
+    if (error) {
+        errorMsg.innerText = error.message;
+        errorMsg.style.display = 'block';
+    } else {
+        showApp();
+    }
+};
+
+// Handle Logout
+window.handleLogout = async function() {
+    await supabaseClient.auth.signOut();
+    showLogin();
+};
+
+// Open Change Password Modal
+window.openChangePasswordModal = function() {
+    document.getElementById('modal-title').innerText = 'Change Master Password';
+    const body = document.getElementById('modal-body');
+    
+    body.innerHTML = `
+        <form id="change-pass-form" onsubmit="submitNewPassword(event)" style="background: transparent; border: none; padding: 0;">
+            <p style="color: var(--text-muted); margin-bottom: 10px;">Enter your new master account password below:</p>
+            <input type="password" id="new-password" placeholder="New Password (min 6 characters)" required style="margin-bottom: 10px;">
+            <button type="submit" id="change-pass-btn" class="primary-btn">Update Password</button>
+        </form>
+    `;
+    document.getElementById('preview-modal').style.display = 'flex';
+};
+
+// Submit New Password to Supabase
+window.submitNewPassword = async function(e) {
+    e.preventDefault();
+    const newPassword = document.getElementById('new-password').value;
+    const btn = document.getElementById('change-pass-btn');
+
+    setLoading(btn, true, 'Updating...');
+
+    const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+
+    setLoading(btn, false, 'Update Password');
+
+    if (error) {
+        alert('Error updating password: ' + error.message);
+    } else {
+        alert('Password updated successfully!');
+        closeModal();
+    }
+};
+
+function showLogin() {
+    document.getElementById('main-app').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('auth-form').reset();
+}
+
+function showApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    
+    document.getElementById('secrets-container').innerHTML = '<h3>Secret Fields</h3>';
+    addSecretRow('username', '');
+    addSecretRow('password', '');
+    fetchFiles('photos', 'photo-list');
+}
 
 // Tab switching logic
 function switchTab(tabName) {
@@ -190,17 +305,7 @@ function addSecretRow(key = '', value = '') {
     container.appendChild(row);
 }
 
-// Initialize default fields on load
-document.addEventListener('DOMContentLoaded', () => {
-    addSecretRow('username', '');
-    addSecretRow('password', '');
-    fetchFiles('photos', 'photo-list');
-});
-
-// Global store for fetched password records for editing convenience
-let vaultRecords = [];
-
-// Handle Password/Vault Submit (Handles both Insert and Update)
+// Handle Password/Vault Submit
 document.getElementById('password-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const editId = document.getElementById('edit-password-id').value;
@@ -221,11 +326,9 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
 
     let error;
     if (editId) {
-        // Update existing record
         const res = await supabaseClient.from('passwords').update({ site_name, secrets }).eq('id', editId);
         error = res.error;
     } else {
-        // Insert new record
         const res = await supabaseClient.from('passwords').insert([{ site_name, secrets }]);
         error = res.error;
     }
@@ -240,7 +343,6 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
     }
 });
 
-// Reset Password Form back to Add mode
 function resetPasswordForm() {
     document.getElementById('password-form').reset();
     document.getElementById('edit-password-id').value = '';
@@ -289,7 +391,6 @@ async function fetchPasswords() {
     });
 }
 
-// View Vault Details in Modal Popup
 window.openVaultModal = function(id) {
     const item = vaultRecords.find(r => r.id === id);
     if (!item) return;
@@ -317,7 +418,6 @@ window.openVaultModal = function(id) {
     document.getElementById('preview-modal').style.display = 'flex';
 };
 
-// Edit Vault Record (Loads into form)
 window.editVaultRecord = function(id) {
     const item = vaultRecords.find(r => r.id === id);
     if (!item) return;
@@ -334,11 +434,9 @@ window.editVaultRecord = function(id) {
         addSecretRow(key, val);
     }
 
-    // Scroll smoothly to form
     document.getElementById('password-form').scrollIntoView({ behavior: 'smooth' });
 };
 
-// Delete Vault Record
 window.deleteVaultRecord = async function(id) {
     if (!confirm('Are you sure you want to delete this account record?')) return;
 
@@ -351,7 +449,6 @@ window.deleteVaultRecord = async function(id) {
     }
 };
 
-// Modal handling for Files and Vault
 window.openModal = function(title, url, type) {
     document.getElementById('modal-title').innerText = title;
     const body = document.getElementById('modal-body');
@@ -370,7 +467,6 @@ window.closeModal = function() {
     document.getElementById('modal-body').innerHTML = '';
 };
 
-// Robust Blob download helper for Supabase and Cloudinary files
 window.downloadFile = async function(url, filename) {
     try {
         const response = await fetch(url);
@@ -388,13 +484,11 @@ window.downloadFile = async function(url, filename) {
     }
 };
 
-// Button loading state helper
 function setLoading(button, isLoading, text) {
     button.disabled = isLoading;
     button.innerText = text;
 }
 
-// Simple reveal password toggle
 window.togglePass = function(btn, plainPass) {
     const span = btn.previousElementSibling;
     if (span.innerText === '••••••••') {
