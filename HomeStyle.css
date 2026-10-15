@@ -162,7 +162,7 @@ button.secondary-btn:hover {
 
 .card-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-shrink: 0;
 }
 
@@ -182,6 +182,14 @@ button.secondary-btn:hover {
 .link-btn:hover {
     background: var(--border);
     color: #7dd3fc;
+}
+
+.link-btn.danger {
+    color: #f87171;
+}
+.link-btn.danger:hover {
+    background: #7f1d1d;
+    color: #fca5a5;
 }
 
 /* Popup Modal Styles */
@@ -218,10 +226,11 @@ button.secondary-btn:hover {
 #modal-body {
     margin-top: 15px;
     overflow-y: auto;
-    text-align: center;
+    text-align: left;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    gap: 10px;
 }
 
 #modal-body img {
@@ -253,7 +262,6 @@ button.secondary-btn:hover {
     color: var(--text);
 }
 
-/* --- RESPONSIVE MEDIA QUERIES --- */
 @media (max-width: 768px) {
     body {
         padding: 10px;
@@ -261,10 +269,6 @@ button.secondary-btn:hover {
 
     header h1 {
         font-size: 1.5rem;
-    }
-
-    header p {
-        font-size: 0.9rem;
     }
 
     .tabs {
@@ -277,7 +281,6 @@ button.secondary-btn:hover {
         text-align: center;
     }
 
-    /* Stack card items and actions vertically on small screens */
     .card {
         flex-direction: column;
         align-items: flex-start;
@@ -286,18 +289,17 @@ button.secondary-btn:hover {
     .card-actions {
         width: 100%;
         display: flex;
-        flex-direction: column;
-        gap: 8px;
+        flex-direction: row;
+        gap: 5px;
+        justify-content: space-between;
     }
 
     .link-btn {
-        width: 100%;
+        flex: 1;
         text-align: center;
-        padding: 10px;
-        box-sizing: border-box;
+        padding: 8px;
     }
 
-    /* Stack dynamic variable input rows inside the password vault form */
     .secret-row {
         flex-direction: column !important;
         gap: 8px !important;

@@ -165,8 +165,8 @@ async function fetchFiles(tableName, containerId) {
         card.innerHTML = `
             <h3>${escapeHtml(item.title)}</h3>
             <div class="card-actions">
-                <button class="link-btn" onclick="openModal('${escapeHtml(item.title)}', '${escapeHtml(item.file_url)}', '${tableName}')">🔍 View File</button>
-                <button class="link-btn" onclick="downloadFile('${escapeHtml(item.file_url)}', '${escapeHtml(item.title)}')">📥 Download File</button>
+                <button class="link-btn" onclick="openModal('${escapeHtml(item.title)}', '${escapeHtml(item.file_url)}', '${tableName}')">🔍 View</button>
+                <button class="link-btn" onclick="downloadFile('${escapeHtml(item.file_url)}', '${escapeHtml(item.title)}')">📥 Download</button>
             </div>
         `;
         listContainer.appendChild(card);
@@ -197,9 +197,13 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchFiles('photos', 'photo-list');
 });
 
-// Handle Password/Vault Submit
+// Global store for fetched password records for editing convenience
+let vaultRecords = [];
+
+// Handle Password/Vault Submit (Handles both Insert and Update)
 document.getElementById('password-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const editId = document.getElementById('edit-password-id').value;
     const site_name = document.getElementById('site-name').value;
     const submitBtn = document.getElementById('password-submit-btn');
     
@@ -215,22 +219,37 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
 
     setLoading(submitBtn, true, 'Saving Secrets...');
 
-    const { error } = await supabaseClient.from('passwords').insert([
-        { site_name, secrets }
-    ]);
+    let error;
+    if (editId) {
+        // Update existing record
+        const res = await supabaseClient.from('passwords').update({ site_name, secrets }).eq('id', editId);
+        error = res.error;
+    } else {
+        // Insert new record
+        const res = await supabaseClient.from('passwords').insert([{ site_name, secrets }]);
+        error = res.error;
+    }
 
-    setLoading(submitBtn, false, 'Save Account Details');
+    setLoading(submitBtn, false, editId ? 'Update Account Details' : 'Save Account Details');
 
     if (error) {
         alert('Error saving details: ' + error.message);
     } else {
-        document.getElementById('password-form').reset();
-        document.getElementById('secrets-container').innerHTML = '<h3>Secret Fields</h3>';
-        addSecretRow('username', '');
-        addSecretRow('password', '');
+        resetPasswordForm();
         fetchPasswords();
     }
 });
+
+// Reset Password Form back to Add mode
+function resetPasswordForm() {
+    document.getElementById('password-form').reset();
+    document.getElementById('edit-password-id').value = '';
+    document.getElementById('password-form-title').innerText = 'Add Account & Secrets';
+    document.getElementById('password-submit-btn').innerText = 'Save Account Details';
+    document.getElementById('secrets-container').innerHTML = '<h3>Secret Fields</h3>';
+    addSecretRow('username', '');
+    addSecretRow('password', '');
+}
 
 // Fetch Passwords & Secrets
 async function fetchPasswords() {
@@ -247,42 +266,92 @@ async function fetchPasswords() {
         return;
     }
 
-    if (data.length === 0) {
+    vaultRecords = data || [];
+
+    if (vaultRecords.length === 0) {
         listContainer.innerHTML = '<p>No saved accounts found.</p>';
         return;
     }
 
-    data.forEach(item => {
+    vaultRecords.forEach(item => {
         const card = document.createElement('div');
         card.className = 'card';
         
-        let secretsHtml = '';
-        for (const [key, val] of Object.entries(item.secrets || {})) {
-            const lowerKey = key.toLowerCase();
-            const isSensitive = lowerKey.includes('pass') || lowerKey.includes('pin') || lowerKey.includes('code') || lowerKey.includes('secret');
-            
-            if (isSensitive) {
-                secretsHtml += `
-                    <p><strong>${escapeHtml(key)}:</strong> 
-                       <span class="masked-pass">••••••••</span> 
-                       <button type="button" onclick="togglePass(this, '${escapeHtml(val)}')">👁️</button>
-                    </p>`;
-            } else {
-                secretsHtml += `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(val)}</p>`;
-            }
-        }
-
         card.innerHTML = `
-            <div style="width: 100%;">
-                <h3>${escapeHtml(item.site_name)}</h3>
-                <div class="secrets-box" style="margin-top: 8px;">${secretsHtml}</div>
+            <h3>${escapeHtml(item.site_name)}</h3>
+            <div class="card-actions">
+                <button class="link-btn" onclick="openVaultModal('${item.id}')">🔍 View</button>
+                <button class="link-btn" onclick="editVaultRecord('${item.id}')">✏️ Edit</button>
+                <button class="link-btn danger" onclick="deleteVaultRecord('${item.id}')">🗑️ Delete</button>
             </div>
         `;
         listContainer.appendChild(card);
     });
 }
 
-// Modal handling
+// View Vault Details in Modal Popup
+window.openVaultModal = function(id) {
+    const item = vaultRecords.find(r => r.id === id);
+    if (!item) return;
+
+    document.getElementById('modal-title').innerText = item.site_name;
+    const body = document.getElementById('modal-body');
+    
+    let secretsHtml = '';
+    for (const [key, val] of Object.entries(item.secrets || {})) {
+        const lowerKey = key.toLowerCase();
+        const isSensitive = lowerKey.includes('pass') || lowerKey.includes('pin') || lowerKey.includes('code') || lowerKey.includes('secret');
+        
+        if (isSensitive) {
+            secretsHtml += `
+                <p style="margin: 6px 0;"><strong>${escapeHtml(key)}:</strong> 
+                   <span class="masked-pass">••••••••</span> 
+                   <button type="button" class="link-btn" style="padding: 2px 6px; margin-left: 5px;" onclick="togglePass(this, '${escapeHtml(val)}')">👁️ Reveal</button>
+                </p>`;
+        } else {
+            secretsHtml += `<p style="margin: 6px 0;"><strong>${escapeHtml(key)}:</strong> ${escapeHtml(val)}</p>`;
+        }
+    }
+
+    body.innerHTML = `<div style="padding: 10px;">${secretsHtml}</div>`;
+    document.getElementById('preview-modal').style.display = 'flex';
+};
+
+// Edit Vault Record (Loads into form)
+window.editVaultRecord = function(id) {
+    const item = vaultRecords.find(r => r.id === id);
+    if (!item) return;
+
+    document.getElementById('edit-password-id').value = item.id;
+    document.getElementById('site-name').value = item.site_name;
+    document.getElementById('password-form-title').innerText = `Edit Account: ${item.site_name}`;
+    document.getElementById('password-submit-btn').innerText = 'Update Account Details';
+
+    const container = document.getElementById('secrets-container');
+    container.innerHTML = '<h3>Secret Fields</h3>';
+
+    for (const [key, val] of Object.entries(item.secrets || {})) {
+        addSecretRow(key, val);
+    }
+
+    // Scroll smoothly to form
+    document.getElementById('password-form').scrollIntoView({ behavior: 'smooth' });
+};
+
+// Delete Vault Record
+window.deleteVaultRecord = async function(id) {
+    if (!confirm('Are you sure you want to delete this account record?')) return;
+
+    const { error } = await supabaseClient.from('passwords').delete().eq('id', id);
+
+    if (error) {
+        alert('Error deleting record: ' + error.message);
+    } else {
+        fetchPasswords();
+    }
+};
+
+// Modal handling for Files and Vault
 window.openModal = function(title, url, type) {
     document.getElementById('modal-title').innerText = title;
     const body = document.getElementById('modal-body');
@@ -315,7 +384,6 @@ window.downloadFile = async function(url, filename) {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
-        // Fallback open in new tab if CORS blocks fetch
         window.open(url, '_blank');
     }
 };
@@ -331,10 +399,10 @@ window.togglePass = function(btn, plainPass) {
     const span = btn.previousElementSibling;
     if (span.innerText === '••••••••') {
         span.innerText = plainPass;
-        btn.innerText = '🔒';
+        btn.innerText = '🔒 Hide';
     } else {
         span.innerText = '••••••••';
-        btn.innerText = '👁️';
+        btn.innerText = '👁️ Reveal';
     }
 };
 

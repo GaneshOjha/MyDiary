@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyDiary - Secure Manager</title>
+    <title>MyDiary</title>
     <!-- Custom Favicon -->
     <link rel="icon" type="image/png" href="ojhag.png">
     <!-- PWA Manifest -->
@@ -19,7 +19,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>🔒 MyVault & Manager</h1>
+            <h1>🔒 MyDiary</h1>
             <p>Secure Personal Files & Secrets Manager</p>
         </header>
 
@@ -31,7 +31,7 @@
 
         <!-- Photo Files Section -->
         <section id="photos-section" class="tab-content active">
-            <h2>Saved Photos</h2>
+            <h2>Saved Photo Files</h2>
             <div id="photo-list" class="card-grid"></div>
 
             <h2>Add Photo File</h2>
@@ -45,7 +45,7 @@
 
         <!-- PDF Files Section -->
         <section id="pdfs-section" class="tab-content">
-            <h2>Saved PDFs</h2>
+            <h2>Saved PDF Files</h2>
             <div id="pdf-list" class="card-grid"></div>
 
             <h2>Add PDF File</h2>
@@ -63,8 +63,9 @@
             <h2>Stored Accounts & Secrets</h2>
             <div id="password-list" class="card-grid"></div>
 
-            <h2>Add Account & Secrets</h2>
+            <h2 id="password-form-title">Add Account & Secrets</h2>
             <form id="password-form">
+                <input type="hidden" id="edit-password-id" value="">
                 <input type="text" id="site-name" placeholder="Account / Service Name (e.g., Bank, Github)" required>
                 <div id="secrets-container">
                     <h3>Secret Fields</h3>
@@ -75,11 +76,11 @@
         </section>
     </div>
 
-    <!-- Popup Modal for Previews -->
+    <!-- Popup Modal for Previews & Secrets View -->
     <div id="preview-modal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeModal()">&times;</span>
-            <h3 id="modal-title">File Preview</h3>
+            <h3 id="modal-title">Details</h3>
             <div id="modal-body"></div>
         </div>
     </div>
