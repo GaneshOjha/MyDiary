@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyDiary - Secure Manager</title>
+    <!-- Custom Favicon -->
+    <link rel="icon" type="image/png" href="ojhag.png">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    
+    <link rel="stylesheet" href="HomeStyle.css">
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Cloudinary Upload Widget v2 -->
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔒 MyVault & Manager</h1>
+            <p>Secure Personal Files & Secrets Manager</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" onclick="switchTab('photos')">Photo Files</button>
+            <button class="tab-btn" onclick="switchTab('pdfs')">PDF Files</button>
+            <button class="tab-btn" onclick="switchTab('passwords')">Password Vault</button>
+        </nav>
+
+        <!-- Photo Files Section -->
+        <section id="photos-section" class="tab-content active">
+            <h2>Saved Photos</h2>
+            <div id="photo-list" class="card-grid"></div>
+
+            <h2>Add Photo File</h2>
+            <form id="photo-form">
+                <input type="text" id="photo-title" placeholder="Photo Title" required>
+                <button type="button" id="photo-upload-btn" class="secondary-btn">📷 Select & Upload Photo</button>
+                <p id="photo-file-status" class="status-text">No file chosen</p>
+                <button type="submit" id="photo-submit-btn" class="primary-btn">Save Photo Entry</button>
+            </form>
+        </section>
+
+        <!-- PDF Files Section -->
+        <section id="pdfs-section" class="tab-content">
+            <h2>Saved PDFs</h2>
+            <div id="pdf-list" class="card-grid"></div>
+
+            <h2>Add PDF File</h2>
+            <form id="pdf-form">
+                <input type="text" id="pdf-title" placeholder="PDF Title" required>
+                <input type="file" id="pdf-file-input" accept="application/pdf" style="display: none;">
+                <button type="button" id="pdf-upload-btn" class="secondary-btn">📄 Select PDF File</button>
+                <p id="pdf-file-status" class="status-text">No file chosen</p>
+                <button type="submit" id="pdf-submit-btn" class="primary-btn">Save PDF Entry</button>
+            </form>
+        </section>
+
+        <!-- Password Vault Section -->
+        <section id="passwords-section" class="tab-content">
+            <h2>Stored Accounts & Secrets</h2>
+            <div id="password-list" class="card-grid"></div>
+
+            <h2>Add Account & Secrets</h2>
+            <form id="password-form">
+                <input type="text" id="site-name" placeholder="Account / Service Name (e.g., Bank, Github)" required>
+                <div id="secrets-container">
+                    <h3>Secret Fields</h3>
+                </div>
+                <button type="button" class="secondary-btn" onclick="addSecretRow()">➕ Add Variable Field</button>
+                <button type="submit" id="password-submit-btn" class="primary-btn">Save Account Details</button>
+            </form>
+        </section>
+    </div>
+
+    <!-- Popup Modal for Previews -->
+    <div id="preview-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h3 id="modal-title">File Preview</h3>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="HomeScript.js"></script>
+    
+    <!-- Register Service Worker for PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
