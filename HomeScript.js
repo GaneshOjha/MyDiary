@@ -8,7 +8,7 @@ const PHOTO_UPLOAD_PRESET = 'PhotoUploadPreset';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         storage: window.sessionStorage,
-        autoRefreshToken: true,
+        autoRefreshToken: false,
         persistSession: true,
         detectSessionInUrl: false
     }
@@ -18,20 +18,23 @@ let uploadedPhotoUrl = '';
 let selectedPdfFile = null;
 let vaultRecords = [];
 
-// Check session on page load
+// Safe session check on page load for Android/PWA
 document.addEventListener('DOMContentLoaded', async () => {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (session) {
-        showApp();
-    } else {
+    try {
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        if (error || !session) {
+            showLogin();
+        } else {
+            showApp();
+        }
+    } catch (err) {
         showLogin();
     }
 });
 
-// Show/Hide Password Toggle for Login Screen
-window.toggleLoginPassword = function() {
+// Show/Hide Password Toggle for Login Screen (Mobile Compatible)
+window.toggleLoginPassword = function(btn) {
     const passInput = document.getElementById('auth-password');
-    const btn = event.currentTarget;
     if (passInput.type === 'password') {
         passInput.type = 'text';
         btn.innerText = '🔒';
@@ -44,7 +47,7 @@ window.toggleLoginPassword = function() {
 // Handle Login Form Submit
 window.handleLogin = async function(e) {
     e.preventDefault();
-    const email = document.getElementById('auth-email').value;
+    const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
     const errorMsg = document.getElementById('auth-error');
     const submitBtn = document.getElementById('auth-submit-btn');
@@ -52,18 +55,23 @@ window.handleLogin = async function(e) {
     setLoading(submitBtn, true, 'Logging in...');
     errorMsg.style.display = 'none';
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: password
-    });
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
 
-    setLoading(submitBtn, false, 'Login to Vault');
-
-    if (error) {
-        errorMsg.innerText = error.message;
+        if (error) {
+            setLoading(submitBtn, false, 'Login to Vault');
+            errorMsg.innerText = error.message;
+            errorMsg.style.display = 'block';
+        } else {
+            showApp();
+        }
+    } catch (err) {
+        setLoading(submitBtn, false, 'Login to Vault');
+        errorMsg.innerText = 'Login failed. Please check your connection.';
         errorMsg.style.display = 'block';
-    } else {
-        showApp();
     }
 };
 
@@ -111,16 +119,20 @@ window.submitNewPassword = async function(e) {
 function showLogin() {
     document.getElementById('main-app').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
-    document.getElementById('auth-form').reset();
+    const form = document.getElementById('auth-form');
+    if (form) form.reset();
 }
 
 function showApp() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('main-app').style.display = 'block';
     
-    document.getElementById('secrets-container').innerHTML = '<h3>Secret Fields</h3>';
-    addSecretRow('username', '');
-    addSecretRow('password', '');
+    const container = document.getElementById('secrets-container');
+    if (container) {
+        container.innerHTML = '<h3>Secret Fields</h3>';
+        addSecretRow('username', '');
+        addSecretRow('password', '');
+    }
     fetchFiles('photos', 'photo-list');
 }
 
@@ -257,6 +269,7 @@ document.getElementById('pdf-form').addEventListener('submit', async (e) => {
 // Generic Fetch Files for Photos/PDFs
 async function fetchFiles(tableName, containerId) {
     const listContainer = document.getElementById(containerId);
+    if (!listContainer) return;
     listContainer.innerHTML = '';
 
     const { data, error } = await supabaseClient
@@ -291,6 +304,7 @@ async function fetchFiles(tableName, containerId) {
 // Add dynamic secret row for vault
 function addSecretRow(key = '', value = '') {
     const container = document.getElementById('secrets-container');
+    if (!container) return;
     const row = document.createElement('div');
     row.className = 'secret-row';
     row.style.display = 'flex';
@@ -356,6 +370,7 @@ function resetPasswordForm() {
 // Fetch Passwords & Secrets
 async function fetchPasswords() {
     const listContainer = document.getElementById('password-list');
+    if (!listContainer) return;
     listContainer.innerHTML = '';
 
     const { data, error } = await supabaseClient
@@ -485,6 +500,7 @@ window.downloadFile = async function(url, filename) {
 };
 
 function setLoading(button, isLoading, text) {
+    if (!button) return;
     button.disabled = isLoading;
     button.innerText = text;
 }
