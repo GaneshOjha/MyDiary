@@ -32,6 +32,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// Toggle Form Visibility Function
+window.toggleForm = function(formId) {
+    const form = document.getElementById(formId);
+    if (form) {
+        if (form.style.display === 'none' || form.style.display === '') {
+            form.style.display = 'flex';
+        } else {
+            form.style.display = 'none';
+        }
+    }
+};
+
 // Show/Hide Password Toggle for Login Screen (Mobile Compatible)
 window.toggleLoginPassword = function(btn) {
     const passInput = document.getElementById('auth-password');
@@ -65,7 +77,6 @@ window.handleLogin = async function(e) {
             setLoading(submitBtn, false, 'Login to Vault');
             errorMsg.innerText = error.message;
             errorMsg.style.display = 'block';
-            // Clear password field on error
             document.getElementById('auth-password').value = '';
         } else {
             showApp();
@@ -122,10 +133,18 @@ window.submitNewPassword = async function(e) {
 function showLogin() {
     document.getElementById('main-app').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
+    
     const passwordInput = document.getElementById('auth-password');
     if (passwordInput) passwordInput.value = '';
+    
     const errorMsg = document.getElementById('auth-error');
     if (errorMsg) errorMsg.style.display = 'none';
+
+    const submitBtn = document.getElementById('auth-submit-btn');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Login to Vault';
+    }
 }
 
 function showApp() {
@@ -217,6 +236,7 @@ document.getElementById('photo-form').addEventListener('submit', async (e) => {
         alert('Error saving photo: ' + error.message);
     } else {
         document.getElementById('photo-form').reset();
+        document.getElementById('photo-form').style.display = 'none'; // Close form after submit
         uploadedPhotoUrl = '';
         document.getElementById('photo-file-status').innerText = 'No file chosen';
         document.getElementById('photo-file-status').style.color = 'var(--text-muted)';
@@ -264,6 +284,7 @@ document.getElementById('pdf-form').addEventListener('submit', async (e) => {
         alert('Error saving PDF record: ' + dbError.message);
     } else {
         document.getElementById('pdf-form').reset();
+        document.getElementById('pdf-form').style.display = 'none'; // Close form after submit
         selectedPdfFile = null;
         document.getElementById('pdf-file-status').innerText = 'No file chosen';
         document.getElementById('pdf-file-status').style.color = 'var(--text-muted)';
@@ -358,6 +379,7 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
         alert('Error saving details: ' + error.message);
     } else {
         resetPasswordForm();
+        document.getElementById('password-form').style.display = 'none'; // Close form after submit
         fetchPasswords();
     }
 });
@@ -365,7 +387,7 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
 function resetPasswordForm() {
     document.getElementById('password-form').reset();
     document.getElementById('edit-password-id').value = '';
-    document.getElementById('password-form-title').innerText = 'Add Account & Secrets';
+    document.getElementById('password-form-title').innerText = 'Add Account & Secrets ➕';
     document.getElementById('password-submit-btn').innerText = 'Save Account Details';
     document.getElementById('secrets-container').innerHTML = '<h3>Secret Fields</h3>';
     addSecretRow('username', '');
@@ -409,7 +431,7 @@ async function fetchPasswords() {
         `;
         listContainer.appendChild(card);
     });
-}
+};
 
 window.openVaultModal = function(id) {
     const item = vaultRecords.find(r => r.id === id);
@@ -454,6 +476,8 @@ window.editVaultRecord = function(id) {
         addSecretRow(key, val);
     }
 
+    // Automatically open the form when editing
+    document.getElementById('password-form').style.display = 'flex';
     document.getElementById('password-form').scrollIntoView({ behavior: 'smooth' });
 };
 

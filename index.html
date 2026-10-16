@@ -57,8 +57,9 @@
             <h2>Saved Photos</h2>
             <div id="photo-list" class="card-grid"></div>
 
-            <h2>Add Photo File</h2>
-            <form id="photo-form">
+            <!-- Collapsible Add Heading -->
+            <h2 onclick="toggleForm('photo-form')" style="cursor: pointer; user-select: none; color: #38bdf8;">Add Photo File ➕</h2>
+            <form id="photo-form" style="display: none;">
                 <input type="text" id="photo-title" placeholder="Photo Title" required>
                 <button type="button" id="photo-upload-btn" class="secondary-btn">📷 Select & Upload Photo</button>
                 <p id="photo-file-status" class="status-text">No file chosen</p>
@@ -71,8 +72,9 @@
             <h2>Saved PDFs</h2>
             <div id="pdf-list" class="card-grid"></div>
 
-            <h2>Add PDF File</h2>
-            <form id="pdf-form">
+            <!-- Collapsible Add Heading -->
+            <h2 onclick="toggleForm('pdf-form')" style="cursor: pointer; user-select: none; color: #38bdf8;">Add PDF File ➕</h2>
+            <form id="pdf-form" style="display: none;">
                 <input type="text" id="pdf-title" placeholder="PDF Title" required>
                 <input type="file" id="pdf-file-input" accept="application/pdf" style="display: none;">
                 <button type="button" id="pdf-upload-btn" class="secondary-btn">📄 Select PDF File</button>
@@ -86,8 +88,9 @@
             <h2>Stored Accounts & Secrets</h2>
             <div id="password-list" class="card-grid"></div>
 
-            <h2 id="password-form-title">Add Account & Secrets</h2>
-            <form id="password-form">
+            <!-- Collapsible Add Heading -->
+            <h2 id="password-form-title" onclick="toggleForm('password-form')" style="cursor: pointer; user-select: none; color: #38bdf8;">Add Account & Secrets ➕</h2>
+            <form id="password-form" style="display: none;">
                 <input type="hidden" id="edit-password-id" value="">
                 <input type="text" id="site-name" placeholder="Account / Service Name (e.g., Bank, Github)" required>
                 <div id="secrets-container">
