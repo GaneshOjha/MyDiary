@@ -21,9 +21,10 @@
     <div id="auth-screen" class="lock-overlay">
         <div class="lock-box">
             <h2>🔒 MyVault Login</h2>
-            <p>Enter your credentials to access your secure vault.</p>
+            <p>Enter your password to access your secure vault.</p>
             <form id="auth-form" onsubmit="handleLogin(event)">
-                <input type="email" id="auth-email" placeholder="Email Address" required autocomplete="email">
+                <!-- Pre-filled email address -->
+                <input type="email" id="auth-email" value="ganeshojha46@gmail.com" placeholder="Email Address" required readonly style="opacity: 0.8; cursor: not-allowed;">
                 <div class="password-wrapper" style="position: relative; display: flex; align-items: center;">
                     <input type="password" id="auth-password" placeholder="Password" required autocomplete="current-password" style="width: 100%; padding-right: 40px;">
                     <button type="button" onclick="toggleLoginPassword(this)" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 1.1rem;" title="Show/Hide Password">👁️</button>

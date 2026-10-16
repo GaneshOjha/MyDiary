@@ -65,6 +65,8 @@ window.handleLogin = async function(e) {
             setLoading(submitBtn, false, 'Login to Vault');
             errorMsg.innerText = error.message;
             errorMsg.style.display = 'block';
+            // Clear password field on error
+            document.getElementById('auth-password').value = '';
         } else {
             showApp();
         }
@@ -72,6 +74,7 @@ window.handleLogin = async function(e) {
         setLoading(submitBtn, false, 'Login to Vault');
         errorMsg.innerText = 'Login failed. Please check your connection.';
         errorMsg.style.display = 'block';
+        document.getElementById('auth-password').value = '';
     }
 };
 
@@ -119,8 +122,10 @@ window.submitNewPassword = async function(e) {
 function showLogin() {
     document.getElementById('main-app').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
-    const form = document.getElementById('auth-form');
-    if (form) form.reset();
+    const passwordInput = document.getElementById('auth-password');
+    if (passwordInput) passwordInput.value = '';
+    const errorMsg = document.getElementById('auth-error');
+    if (errorMsg) errorMsg.style.display = 'none';
 }
 
 function showApp() {
