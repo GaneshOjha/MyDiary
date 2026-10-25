@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mydiary-cache-v6';
+const CACHE_NAME = 'mydiary-cache-v7';
 const ASSETS = [
   'index.html',
   'HomeStyle.css',

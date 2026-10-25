@@ -17,8 +17,12 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 let uploadedPhotoUrl = '';
 let selectedPdfFile = null;
 let vaultRecords = [];
+let photoRecords = [];
+let pdfRecords = [];
 
-// Safe session check on page load for Android/PWA
+// Modal navigation state
+const modalState = { type: null, index: -1 };
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -44,7 +48,7 @@ window.toggleForm = function(formId) {
     }
 };
 
-// Show/Hide Password Toggle for Login Screen (Mobile Compatible)
+// Show/Hide Password Toggle for Login Screen
 window.toggleLoginPassword = function(btn) {
     const passInput = document.getElementById('auth-password');
     if (passInput.type === 'password') {
@@ -97,6 +101,9 @@ window.handleLogout = async function() {
 
 // Open Change Password Modal
 window.openChangePasswordModal = function() {
+    modalState.type = null;
+    modalState.index = -1;
+
     document.getElementById('modal-title').innerText = 'Change Master Password';
     const body = document.getElementById('modal-body');
     
@@ -107,6 +114,7 @@ window.openChangePasswordModal = function() {
             <button type="submit" id="change-pass-btn" class="primary-btn">Update Password</button>
         </form>
     `;
+    renderModalNav();
     document.getElementById('preview-modal').style.display = 'flex';
 };
 
@@ -236,7 +244,7 @@ document.getElementById('photo-form').addEventListener('submit', async (e) => {
         alert('Error saving photo: ' + error.message);
     } else {
         document.getElementById('photo-form').reset();
-        document.getElementById('photo-form').style.display = 'none'; // Close form after submit
+        document.getElementById('photo-form').style.display = 'none';
         uploadedPhotoUrl = '';
         document.getElementById('photo-file-status').innerText = 'No file chosen';
         document.getElementById('photo-file-status').style.color = 'var(--text-muted)';
@@ -244,7 +252,7 @@ document.getElementById('photo-form').addEventListener('submit', async (e) => {
     }
 });
 
-// Handle PDF Form Submit (Uploads to Supabase Storage bucket)
+// Handle PDF Form Submit
 document.getElementById('pdf-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const title = document.getElementById('pdf-title').value;
@@ -257,9 +265,16 @@ document.getElementById('pdf-form').addEventListener('submit', async (e) => {
 
     setLoading(submitBtn, true, 'Uploading PDF...');
 
-    const fileName = `${Date.now()}_${selectedPdfFile.name}`;
+    // Sanitize filename
+    const originalName = selectedPdfFile.name;
+    const extension = originalName.split('.').pop();
+    const safeBaseName = originalName
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[^a-zA-Z0-9]/g, '_');
+    const fileName = `${Date.now()}_${safeBaseName}.${extension}`;
+
     const { error: uploadError } = await supabaseClient.storage
-        .from('vault-files')
+        .from('Book_Bucket')
         .upload(fileName, selectedPdfFile);
 
     if (uploadError) {
@@ -269,7 +284,7 @@ document.getElementById('pdf-form').addEventListener('submit', async (e) => {
     }
 
     const { data: publicUrlData } = supabaseClient.storage
-        .from('vault-files')
+        .from('Book_Bucket')
         .getPublicUrl(fileName);
 
     const file_url = publicUrlData.publicUrl;
@@ -284,7 +299,7 @@ document.getElementById('pdf-form').addEventListener('submit', async (e) => {
         alert('Error saving PDF record: ' + dbError.message);
     } else {
         document.getElementById('pdf-form').reset();
-        document.getElementById('pdf-form').style.display = 'none'; // Close form after submit
+        document.getElementById('pdf-form').style.display = 'none';
         selectedPdfFile = null;
         document.getElementById('pdf-file-status').innerText = 'No file chosen';
         document.getElementById('pdf-file-status').style.color = 'var(--text-muted)';
@@ -308,23 +323,55 @@ async function fetchFiles(tableName, containerId) {
         return;
     }
 
+    if (tableName === 'photos') photoRecords = data || [];
+    if (tableName === 'pdfs') pdfRecords = data || [];
+
     if (data.length === 0) {
         listContainer.innerHTML = '<p>No records found.</p>';
         return;
     }
 
-    data.forEach(item => {
+    data.forEach((item, idx) => {
         const card = document.createElement('div');
         card.className = 'card';
+        
+        // NEW: Move the onclick to the entire card
+        card.setAttribute('onclick', `openFileModal('${tableName}', ${idx})`);
+        
         card.innerHTML = `
             <h3>${escapeHtml(item.title)}</h3>
             <div class="card-actions">
-                <button class="link-btn" onclick="openModal('${escapeHtml(item.title)}', '${escapeHtml(item.file_url)}', '${tableName}')">🔍 View</button>
-                <button class="link-btn" onclick="downloadFile('${escapeHtml(item.file_url)}', '${escapeHtml(item.title)}')">📥 Download</button>
+                <button class="link-btn" onclick="event.stopPropagation(); openFileModal('${tableName}', ${idx})">🔍 View</button>
+                <button class="link-btn" onclick="event.stopPropagation(); downloadFile('${escapeHtml(item.file_url)}', '${escapeHtml(item.title)}')">📥 Download</button>
             </div>
         `;
         listContainer.appendChild(card);
     });
+}
+
+// Open photo/pdf modal
+window.openFileModal = function(type, index) {
+    modalState.type = (type === 'photos') ? 'photo' : 'pdf';
+    modalState.index = index;
+    renderFileModal();
+    document.getElementById('preview-modal').style.display = 'flex';
+};
+
+function renderFileModal() {
+    const list = modalState.type === 'photo' ? photoRecords : pdfRecords;
+    const item = list[modalState.index];
+    if (!item) return;
+
+    const titleEl = document.getElementById('modal-title');
+    titleEl.innerHTML = `${escapeHtml(item.title)} <span class="modal-counter">(${modalState.index + 1}/${list.length})</span>`;
+
+    const body = document.getElementById('modal-body');
+    if (modalState.type === 'photo') {
+        body.innerHTML = `<img src="${escapeHtml(item.file_url)}" alt="${escapeHtml(item.title)}">`;
+    } else {
+        body.innerHTML = `<embed src="${escapeHtml(item.file_url)}" type="application/pdf">`;
+    }
+    renderModalNav();
 }
 
 // Add dynamic secret row for vault
@@ -379,7 +426,7 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
         alert('Error saving details: ' + error.message);
     } else {
         resetPasswordForm();
-        document.getElementById('password-form').style.display = 'none'; // Close form after submit
+        document.getElementById('password-form').style.display = 'none';
         fetchPasswords();
     }
 });
@@ -417,16 +464,19 @@ async function fetchPasswords() {
         return;
     }
 
-    vaultRecords.forEach(item => {
+    vaultRecords.forEach((item, idx) => {
         const card = document.createElement('div');
         card.className = 'card';
+        
+        // NEW: Move the onclick to the entire card
+        card.setAttribute('onclick', `openVaultModal('${item.id}')`);
         
         card.innerHTML = `
             <h3>${escapeHtml(item.site_name)}</h3>
             <div class="card-actions">
-                <button class="link-btn" onclick="openVaultModal('${item.id}')">🔍 View</button>
-                <button class="link-btn" onclick="editVaultRecord('${item.id}')">✏️ Edit</button>
-                <button class="link-btn danger" onclick="deleteVaultRecord('${item.id}')">🗑️ Delete</button>
+                <button class="link-btn" onclick="event.stopPropagation(); openVaultModal('${item.id}')">🔍 View</button>
+                <button class="link-btn" onclick="event.stopPropagation(); editVaultRecord('${item.id}')">✏️ Edit</button>
+                <button class="link-btn danger" onclick="event.stopPropagation(); deleteVaultRecord('${item.id}')">🗑️ Delete</button>
             </div>
         `;
         listContainer.appendChild(card);
@@ -434,10 +484,22 @@ async function fetchPasswords() {
 };
 
 window.openVaultModal = function(id) {
-    const item = vaultRecords.find(r => r.id === id);
+    const index = vaultRecords.findIndex(r => r.id === id);
+    if (index === -1) return;
+
+    modalState.type = 'vault';
+    modalState.index = index;
+    renderVaultModal();
+    document.getElementById('preview-modal').style.display = 'flex';
+};
+
+function renderVaultModal() {
+    const item = vaultRecords[modalState.index];
     if (!item) return;
 
-    document.getElementById('modal-title').innerText = item.site_name;
+    const titleEl = document.getElementById('modal-title');
+    titleEl.innerHTML = `${escapeHtml(item.site_name)} <span class="modal-counter">(${modalState.index + 1}/${vaultRecords.length})</span>`;
+
     const body = document.getElementById('modal-body');
     
     let secretsHtml = '';
@@ -457,8 +519,8 @@ window.openVaultModal = function(id) {
     }
 
     body.innerHTML = `<div style="padding: 10px;">${secretsHtml}</div>`;
-    document.getElementById('preview-modal').style.display = 'flex';
-};
+    renderModalNav();
+}
 
 window.editVaultRecord = function(id) {
     const item = vaultRecords.find(r => r.id === id);
@@ -476,7 +538,6 @@ window.editVaultRecord = function(id) {
         addSecretRow(key, val);
     }
 
-    // Automatically open the form when editing
     document.getElementById('password-form').style.display = 'flex';
     document.getElementById('password-form').scrollIntoView({ behavior: 'smooth' });
 };
@@ -493,22 +554,104 @@ window.deleteVaultRecord = async function(id) {
     }
 };
 
+// Backwards-compatible single-file open
 window.openModal = function(title, url, type) {
+    const list = type === 'photos' ? photoRecords : pdfRecords;
+    const idx = list.findIndex(r => r.file_url === url);
+    if (idx !== -1) {
+        openFileModal(type === 'photos' ? 'photos' : 'pdfs', idx);
+        return;
+    }
+    modalState.type = null;
+    modalState.index = -1;
     document.getElementById('modal-title').innerText = title;
     const body = document.getElementById('modal-body');
-    
     if (type === 'photos') {
         body.innerHTML = `<img src="${url}" alt="${title}">`;
     } else {
         body.innerHTML = `<embed src="${url}" type="application/pdf">`;
     }
-    
+    renderModalNav();
     document.getElementById('preview-modal').style.display = 'flex';
 };
+
+// ---------- Modal Navigation ----------
+
+function renderModalNav() {
+    const content = document.querySelector('.modal-content');
+    if (!content) return;
+
+    content.querySelectorAll('.modal-nav-btn').forEach(el => el.remove());
+
+    if (!modalState.type || modalState.index < 0) return;
+
+    let total = 0;
+    if (modalState.type === 'photo') total = photoRecords.length;
+    else if (modalState.type === 'pdf') total = pdfRecords.length;
+    else if (modalState.type === 'vault') total = vaultRecords.length;
+
+    if (total <= 1) return;
+
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'modal-nav-btn prev';
+    prevBtn.innerHTML = '&lsaquo;';
+    prevBtn.title = 'Previous';
+    prevBtn.setAttribute('aria-label', 'Previous');
+    prevBtn.disabled = modalState.index <= 0;
+    prevBtn.onclick = modalPrev;
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'modal-nav-btn next';
+    nextBtn.innerHTML = '&rsaquo;';
+    nextBtn.title = 'Next';
+    nextBtn.setAttribute('aria-label', 'Next');
+    nextBtn.disabled = modalState.index >= total - 1;
+    nextBtn.onclick = modalNext;
+
+    content.appendChild(prevBtn);
+    content.appendChild(nextBtn);
+}
+
+function modalPrev() {
+    if (!modalState.type || modalState.index <= 0) return;
+    modalState.index -= 1;
+    rerenderCurrentModal();
+}
+
+function modalNext() {
+    if (!modalState.type) return;
+    let total = 0;
+    if (modalState.type === 'photo') total = photoRecords.length;
+    else if (modalState.type === 'pdf') total = pdfRecords.length;
+    else if (modalState.type === 'vault') total = vaultRecords.length;
+    if (modalState.index >= total - 1) return;
+    modalState.index += 1;
+    rerenderCurrentModal();
+}
+
+function rerenderCurrentModal() {
+    if (modalState.type === 'photo' || modalState.type === 'pdf') {
+        renderFileModal();
+    } else if (modalState.type === 'vault') {
+        renderVaultModal();
+    }
+}
+
+// Keyboard arrows for accessibility
+document.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('preview-modal');
+    if (!modal || modal.style.display !== 'flex') return;
+    if (e.key === 'ArrowLeft') { modalPrev(); }
+    else if (e.key === 'ArrowRight') { modalNext(); }
+    else if (e.key === 'Escape') { closeModal(); }
+});
 
 window.closeModal = function() {
     document.getElementById('preview-modal').style.display = 'none';
     document.getElementById('modal-body').innerHTML = '';
+    document.querySelectorAll('.modal-nav-btn').forEach(el => el.remove());
+    modalState.type = null;
+    modalState.index = -1;
 };
 
 window.downloadFile = async function(url, filename) {
